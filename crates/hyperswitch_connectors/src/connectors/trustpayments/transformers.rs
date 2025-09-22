@@ -1,9 +1,9 @@
 use cards;
 use common_enums::enums;
-use common_utils::{request::Method, types::StringMinorUnit};
+use common_utils::{pii::Email, request::Method, types::StringMinorUnit};
 use error_stack::ResultExt;
-use url;
 use hyperswitch_domain_models::{
+    address::Address,
     payment_method_data::{BankRedirectData, PaymentMethodData},
     router_data::{ConnectorAuthType, RouterData},
     router_flow_types::refunds::{Execute, RSync},
@@ -17,6 +17,7 @@ use hyperswitch_domain_models::{
 use hyperswitch_interfaces::errors;
 use masking::{ExposeInterface, Secret};
 use serde::{Deserialize, Serialize};
+use url;
 
 use crate::{
     types::{RefundsResponseRouterData, ResponseRouterData},
@@ -324,32 +325,31 @@ pub struct TrustpaymentsPaymentRequestData {
     pub currencyiso3a: String,
     pub baseamount: String,
     pub orderreference: String,
-    
+
     // Optional fields based on payment method
     pub paymenttypedescription: Option<String>,
-    
+
     // Card-specific fields
     pub pan: Option<cards::CardNumber>,
     pub expirydate: Option<Secret<String>>,
     pub securitycode: Option<Secret<String>>,
     pub credentialsonfile: Option<String>,
     pub settlestatus: Option<String>,
-    
+
     // Redirect-specific fields
     pub returnurl: Option<String>,
     pub successfulurlredirect: Option<String>,
     pub errorurlredirect: Option<String>,
-    
+
     // Billing fields (common across payment types)
     pub billingfirstname: Option<String>,
     pub billinglastname: Option<String>,
     pub billingcountryiso2a: Option<String>,
-    pub billingemail: Option<String>,
-    
+    pub billingemail: Option<Email>,
+
     // Application type for specific payment methods
     pub applicationtype: Option<String>,
 }
-
 
 impl TryFrom<&TrustpaymentsRouterData<&PaymentsAuthorizeRouterData>>
     for TrustpaymentsPaymentsRequest
@@ -418,7 +418,6 @@ impl TryFrom<&TrustpaymentsRouterData<&PaymentsAuthorizeRouterData>>
 }
 
 impl TrustpaymentsPaymentsRequest {
-    
     fn build_card_request(
         item: &TrustpaymentsRouterData<&PaymentsAuthorizeRouterData>,
         auth: &TrustpaymentsAuthType,
@@ -448,34 +447,56 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // Card-specific fields
                 paymenttypedescription: None,
                 pan: Some(card.card_number.clone()),
-                expirydate: Some(card.get_card_expiry_month_year_2_digit_with_delimiter("/".to_string())?),
+                expirydate: Some(
+                    card.get_card_expiry_month_year_2_digit_with_delimiter("/".to_string())?,
+                ),
                 securitycode: Some(card.card_cvc.clone()),
-                credentialsonfile: Some(TrustpaymentsCredentialsOnFile::CardholderInitiatedTransaction.to_string()),
+                credentialsonfile: Some(
+                    TrustpaymentsCredentialsOnFile::CardholderInitiatedTransaction.to_string(),
+                ),
                 settlestatus: Some(match item.router_data.request.capture_method {
                     Some(common_enums::CaptureMethod::Manual) => {
-                        TrustpaymentsSettleStatus::ManualCapture.as_str().to_string()
+                        TrustpaymentsSettleStatus::ManualCapture
+                            .as_str()
+                            .to_string()
                     }
                     Some(common_enums::CaptureMethod::Automatic) | None => {
-                        TrustpaymentsSettleStatus::PendingSettlement.as_str().to_string()
+                        TrustpaymentsSettleStatus::PendingSettlement
+                            .as_str()
+                            .to_string()
                     }
-                    _ => TrustpaymentsSettleStatus::PendingSettlement.as_str().to_string(),
+                    _ => TrustpaymentsSettleStatus::PendingSettlement
+                        .as_str()
+                        .to_string(),
                 }),
-                
+
                 // Not used for cards
                 returnurl: None,
                 successfulurlredirect: None,
                 errorurlredirect: None,
-                
+
                 // Billing fields
-                billingfirstname: item.router_data.get_optional_billing_first_name().map(|name| name.expose()),
-                billinglastname: item.router_data.get_optional_billing_last_name().map(|name| name.expose()),
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingfirstname: item
+                    .router_data
+                    .get_optional_billing_first_name()
+                    .map(|name| name.expose()),
+                billinglastname: item
+                    .router_data
+                    .get_optional_billing_last_name()
+                    .map(|name| name.expose()),
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string()),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
+
                 // Not used for cards
                 applicationtype: None,
             }],
@@ -496,19 +517,30 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // EPS-specific fields
                 paymenttypedescription: Some("EPS".to_string()),
                 returnurl: item.router_data.request.router_return_url.clone(),
                 successfulurlredirect: item.router_data.request.router_return_url.clone(),
                 errorurlredirect: item.router_data.request.router_return_url.clone(),
-                
+
                 // Billing fields
-                billingfirstname: item.router_data.get_optional_billing_first_name().map(|name| name.expose()),
-                billinglastname: item.router_data.get_optional_billing_last_name().map(|name| name.expose()),
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingfirstname: item
+                    .router_data
+                    .get_optional_billing_first_name()
+                    .map(|name| name.expose()),
+                billinglastname: item
+                    .router_data
+                    .get_optional_billing_last_name()
+                    .map(|name| name.expose()),
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string()),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
                 // Not used for EPS
                 pan: None,
                 expirydate: None,
@@ -534,19 +566,30 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // Trustly-specific fields
                 paymenttypedescription: Some("TRUSTLY".to_string()),
                 returnurl: item.router_data.request.router_return_url.clone(),
                 successfulurlredirect: None,
                 errorurlredirect: None,
-                
+
                 // Billing fields
-                billingfirstname: item.router_data.get_optional_billing_first_name().map(|name| name.expose()),
-                billinglastname: item.router_data.get_optional_billing_last_name().map(|name| name.expose()),
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingfirstname: item
+                    .router_data
+                    .get_optional_billing_first_name()
+                    .map(|name| name.expose()),
+                billinglastname: item
+                    .router_data
+                    .get_optional_billing_last_name()
+                    .map(|name| name.expose()),
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string()),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
                 // Not used for Trustly
                 pan: None,
                 expirydate: None,
@@ -572,19 +615,25 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // Alipay-specific fields
                 paymenttypedescription: Some("ALIPAY".to_string()),
                 returnurl: item.router_data.request.router_return_url.clone(),
                 successfulurlredirect: None,
                 errorurlredirect: None,
-                
+
                 // Billing fields
                 billingfirstname: None,
                 billinglastname: None,
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()).or_else(|| Some("CN".to_string())),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string())
+                    .or_else(|| Some("CN".to_string())),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
                 // Not used for Alipay
                 pan: None,
                 expirydate: None,
@@ -610,19 +659,30 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // Paysera-specific fields
                 paymenttypedescription: Some("PAYSERA".to_string()),
                 returnurl: item.router_data.request.router_return_url.clone(),
                 successfulurlredirect: item.router_data.request.router_return_url.clone(),
                 errorurlredirect: item.router_data.request.router_return_url.clone(),
-                
+
                 // Billing fields
-                billingfirstname: item.router_data.get_optional_billing_first_name().map(|name| name.expose()),
-                billinglastname: item.router_data.get_optional_billing_last_name().map(|name| name.expose()),
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingfirstname: item
+                    .router_data
+                    .get_optional_billing_first_name()
+                    .map(|name| name.expose()),
+                billinglastname: item
+                    .router_data
+                    .get_optional_billing_last_name()
+                    .map(|name| name.expose()),
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string()),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
                 // Not used for Paysera
                 pan: None,
                 expirydate: None,
@@ -648,19 +708,30 @@ impl TrustpaymentsPaymentsRequest {
                 currencyiso3a: item.router_data.request.currency.to_string(),
                 baseamount: item.amount.to_string(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
-                
+
                 // SEPA-specific fields
                 paymenttypedescription: Some("SEPA".to_string()),
                 returnurl: None,
                 successfulurlredirect: None,
                 errorurlredirect: None,
-                
+
                 // Billing fields
-                billingfirstname: item.router_data.get_optional_billing_first_name().map(|name| name.expose()),
-                billinglastname: item.router_data.get_optional_billing_last_name().map(|name| name.expose()),
-                billingcountryiso2a: item.router_data.get_optional_billing_country().map(|country| country.to_string()),
-                billingemail: Some("abc@gmail.com".to_string()),
-                
+                billingfirstname: item
+                    .router_data
+                    .get_optional_billing_first_name()
+                    .map(|name| name.expose()),
+                billinglastname: item
+                    .router_data
+                    .get_optional_billing_last_name()
+                    .map(|name| name.expose()),
+                billingcountryiso2a: item
+                    .router_data
+                    .get_optional_billing_country()
+                    .map(|country| country.to_string()),
+                billingemail: item
+                    .router_data
+                    .get_optional_billing_email(),
+
                 // Not used for SEPA
                 pan: None,
                 expirydate: None,
@@ -731,11 +802,9 @@ pub struct TrustpaymentsPaymentResponseData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TrustpaymentsPaymentRecords{
-    pub settlestatus: Option<TrustpaymentsSettleStatus>
+pub struct TrustpaymentsPaymentRecords {
+    pub settlestatus: Option<TrustpaymentsSettleStatus>,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrustpaymentsAlipayResponse {
@@ -832,8 +901,6 @@ impl TrustpaymentsAlipayResponseData {
     }
 }
 
-
-
 impl TrustpaymentsSepaResponseData {
     pub fn get_sepa_status(&self) -> common_enums::AttemptStatus {
         match self.errorcode {
@@ -855,14 +922,16 @@ impl TrustpaymentsPayseraResponseData {
             TrustpaymentsErrorCode::Success => {
                 if self.redirecturl.is_some() {
                     common_enums::AttemptStatus::AuthenticationPending
-                } else if self.requesttypedescription == "TRANSACTIONQUERY" 
-                    && self.transactionreference.is_none() 
-                    && self.redirecturl.is_none() {
+                } else if self.requesttypedescription == "TRANSACTIONQUERY"
+                    && self.transactionreference.is_none()
+                    && self.redirecturl.is_none()
+                {
                     // For Paysera sync queries, when transactionreference and redirecturl are null,
                     // check if we have any indication of completion (timestamp, settlestatus, etc.)
-                    if self.transactionstartedtimestamp.is_some() || 
-                       self.settlestatus.is_some() ||
-                       self.baseamount.is_some() {
+                    if self.transactionstartedtimestamp.is_some()
+                        || self.settlestatus.is_some()
+                        || self.baseamount.is_some()
+                    {
                         // Payment has been processed/completed
                         common_enums::AttemptStatus::Charged
                     } else {
@@ -879,7 +948,10 @@ impl TrustpaymentsPayseraResponseData {
 }
 
 impl TrustpaymentsPaymentResponseData {
-    fn map_settlestatus_to_attempt_status(&self, default_for_none: common_enums::AttemptStatus) -> common_enums::AttemptStatus {
+    fn map_settlestatus_to_attempt_status(
+        &self,
+        default_for_none: common_enums::AttemptStatus,
+    ) -> common_enums::AttemptStatus {
         match &self.settlestatus {
             Some(TrustpaymentsSettleStatus::PendingSettlement) => {
                 // settlestatus "0" = Authorized. The payment has been authorized, no further action required
@@ -939,10 +1011,17 @@ impl TrustpaymentsPaymentResponseData {
 
         let status = match self.errorcode {
             TrustpaymentsErrorCode::Success => {
-                router_env::logger::info!("TrustPayments PSync Status Logic - Success errorcode, evaluating conditions");
+                router_env::logger::info!(
+                    "TrustPayments PSync Status Logic - Success errorcode, evaluating conditions"
+                );
 
-                router_env::logger::info!("dfsdfsd auth code{} records{} transactionreference{}", self.authcode.is_some(), self.records.is_some(), self.transactionreference.is_some());
-                
+                router_env::logger::info!(
+                    "dfsdfsd auth code{} records{} transactionreference{}",
+                    self.authcode.is_some(),
+                    self.records.is_some(),
+                    self.transactionreference.is_some()
+                );
+
                 if self.requesttypedescription == "TRANSACTIONQUERY"
                     && self.authcode.is_none()
                     && self.records.is_none()
@@ -951,12 +1030,11 @@ impl TrustpaymentsPaymentResponseData {
                     router_env::logger::info!("TrustPayments PSync Status Logic - Condition 1 matched: TRANSACTIONQUERY with all fields None -> Authorized");
                     common_enums::AttemptStatus::Charged
                 } else if self.authcode.is_some() {
-                    
                     router_env::logger::info!(
                         "TrustPayments PSync Status Logic - Condition 2 matched: authcode.is_some()={} OR (TRANSACTIONQUERY with settlestatus and transactionreference present)",
                         self.authcode.is_some()
                     );
-                    
+
                     let settle_status = match &self.settlestatus {
                         Some(TrustpaymentsSettleStatus::PendingSettlement) => {
                             router_env::logger::info!("TrustPayments PSync Status Logic - SettleStatus: PendingSettlement -> Authorized");
@@ -971,7 +1049,9 @@ impl TrustpaymentsPaymentResponseData {
                             common_enums::AttemptStatus::Authorized
                         }
                         Some(TrustpaymentsSettleStatus::Voided) => {
-                            router_env::logger::info!("TrustPayments PSync Status Logic - SettleStatus: Voided -> Voided");
+                            router_env::logger::info!(
+                                "TrustPayments PSync Status Logic - SettleStatus: Voided -> Voided"
+                            );
                             common_enums::AttemptStatus::Voided
                         }
                         Some(TrustpaymentsSettleStatus::PendingSettlementRedirect) => {
@@ -988,12 +1068,16 @@ impl TrustpaymentsPaymentResponseData {
                         }
                     };
                     settle_status
-                }else if self.requesttypedescription == "TRANSACTIONQUERY" 
+                } else if self.requesttypedescription == "TRANSACTIONQUERY"
                     && self.authcode.is_none()
                     && self.records.is_some()
+                {
+                    let settle_status = match self
+                        .records
+                        .as_ref()
+                        .and_then(|records| records.first())
+                        .and_then(|record| record.settlestatus.as_ref())
                     {
-
-                    let settle_status = match self.records.as_ref().and_then(|records| records.first()).and_then(|record| record.settlestatus.as_ref()) {
                         Some(TrustpaymentsSettleStatus::PendingSettlement) => {
                             router_env::logger::info!("TrustPayments PSync Status Logic - SettleStatus: PendingSettlement -> Authorized");
                             common_enums::AttemptStatus::Authorized
@@ -1007,7 +1091,9 @@ impl TrustpaymentsPaymentResponseData {
                             common_enums::AttemptStatus::Authorized
                         }
                         Some(TrustpaymentsSettleStatus::Voided) => {
-                            router_env::logger::info!("TrustPayments PSync Status Logic - SettleStatus: Voided -> Voided");
+                            router_env::logger::info!(
+                                "TrustPayments PSync Status Logic - SettleStatus: Voided -> Voided"
+                            );
                             common_enums::AttemptStatus::Voided
                         }
                         Some(TrustpaymentsSettleStatus::PendingSettlementRedirect) => {
@@ -1025,10 +1111,10 @@ impl TrustpaymentsPaymentResponseData {
                     };
 
                     settle_status
-                    }
-                
-                 else {
-                    router_env::logger::info!("TrustPayments PSync Status Logic - No conditions matched -> Pending");
+                } else {
+                    router_env::logger::info!(
+                        "TrustPayments PSync Status Logic - No conditions matched -> Pending"
+                    );
                     common_enums::AttemptStatus::Pending
                 }
             }
@@ -1050,7 +1136,6 @@ impl TrustpaymentsPaymentResponseData {
 
         status
     }
-    
 
     pub fn get_error_message(&self) -> String {
         if self.errorcode.is_success() {
@@ -1067,7 +1152,6 @@ impl TrustpaymentsPaymentResponseData {
             None
         }
     }
-
 }
 
 impl
@@ -1130,10 +1214,12 @@ impl
 
         let redirection_data = if let Some(redirect_url) = &response_data.redirecturl {
             match url::Url::parse(redirect_url) {
-                Ok(parsed_url) => Some(hyperswitch_domain_models::router_response_types::RedirectForm::from((
-                    parsed_url,
-                    Method::Get,
-                ))),
+                Ok(parsed_url) => Some(
+                    hyperswitch_domain_models::router_response_types::RedirectForm::from((
+                        parsed_url,
+                        Method::Get,
+                    )),
+                ),
                 Err(_) => None,
             }
         } else {
@@ -1206,12 +1292,12 @@ impl
         );
 
         let status = response_data.get_payment_status_for_sync();
-        
+
         router_env::logger::info!(
             "TrustPayments PSync Response - Computed status: {:?}",
             status
         );
-        
+
         let transaction_id = item
             .data
             .request
@@ -1914,10 +2000,12 @@ impl TrustpaymentsPaymentResponseData {
                 Some(TrustpaymentsSettleStatus::PendingSettlement) => enums::RefundStatus::Pending,
                 Some(TrustpaymentsSettleStatus::ManualCapture) => enums::RefundStatus::Failure,
                 Some(TrustpaymentsSettleStatus::Voided) => enums::RefundStatus::Failure,
-                Some(TrustpaymentsSettleStatus::PendingSettlementRedirect) => enums::RefundStatus::Pending,
+                Some(TrustpaymentsSettleStatus::PendingSettlementRedirect) => {
+                    enums::RefundStatus::Pending
+                }
                 Some(TrustpaymentsSettleStatus::SettledRedirect) => enums::RefundStatus::Success,
                 None => enums::RefundStatus::Success,
-            }
+            },
             TrustpaymentsErrorCode::Processing => enums::RefundStatus::Pending,
             _ => enums::RefundStatus::Failure,
         }
