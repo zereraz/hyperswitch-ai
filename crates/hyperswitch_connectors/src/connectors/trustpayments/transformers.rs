@@ -1015,7 +1015,7 @@ impl TrustpaymentsPaymentResponseData {
                             common_enums::AttemptStatus::Charged
                         }
                         None => common_enums::AttemptStatus::Authorized,
-                    };
+                    }
                 } else if self.requesttypedescription == "TRANSACTIONQUERY"
                     && self.authcode.is_none()
                     && self.records.is_some()
@@ -1045,14 +1045,14 @@ impl TrustpaymentsPaymentResponseData {
                             common_enums::AttemptStatus::Charged
                         }
                         None => common_enums::AttemptStatus::Authorized,
-                    };
+                    }
 
                 } else {
                     common_enums::AttemptStatus::Pending
                 }
             }
             _ => {
-                self.errorcode.get_attempt_status();
+                self.errorcode.get_attempt_status()
             }
         };
 
