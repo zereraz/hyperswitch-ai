@@ -2331,10 +2331,25 @@ fn get_bank_redirect_required_fields(
         ),
         (
             enums::PaymentMethodType::Interac,
-            connectors(vec![(
-                Connector::Paysafe,
-                fields(vec![], vec![RequiredField::BillingEmail], vec![]),
-            )]),
+            connectors(vec![
+                (
+                    Connector::Paysafe,
+                    fields(vec![], vec![RequiredField::BillingEmail], vec![]),
+                ),
+                (
+                    Connector::Gigadat,
+                    fields(
+                        vec![],
+                        vec![
+                            RequiredField::BillingEmail,
+                            RequiredField::BillingUserFirstName,
+                            RequiredField::BillingUserLastName,
+                            RequiredField::BillingPhone,
+                        ],
+                        vec![],
+                    ),
+                ),
+            ]),
         ),
     ])
 }
