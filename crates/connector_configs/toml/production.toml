@@ -5481,7 +5481,7 @@ api_key = "API Key"
 key1 = "API Secret"
 
 
-[[trustpayments]
+[[trustpayments]]
 [[trustpayments.credit]]
   payment_method_type = "Mastercard"
 [[trustpayments.credit]]
@@ -5500,7 +5500,7 @@ key1 = "API Secret"
   payment_method_type = "ali_pay"
 [[trustpayments.wallet]]
   payment_method_type = "paysera"
-[trustpayments.connector_auth.HeaderKey]
+[trustpayments.connector_auth.SignatureKey]
 api_key = "API Key"
 key1 = "Password"
 api_secret = "API Secret"
@@ -5916,8 +5916,4 @@ api_key = "API Key"
 
 [gigadat]
 [gigadat.connector_auth.HeaderKey]
-api_key = "API Key"
-
-[trustpayments]
-[trustpayments.connector_auth.HeaderKey]
 api_key = "API Key"
