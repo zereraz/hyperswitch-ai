@@ -322,7 +322,7 @@ pub struct TrustpaymentsPaymentRequestData {
     pub requesttypedescriptions: Vec<String>,
     pub accounttypedescription: String,
     pub currencyiso3a: String,
-    pub baseamount: String,
+    pub baseamount: StringMinorUnit,
     pub orderreference: String,
 
     // Optional fields based on payment method
@@ -341,8 +341,8 @@ pub struct TrustpaymentsPaymentRequestData {
     pub errorurlredirect: Option<String>,
 
     // Billing fields (common across payment types)
-    pub billingfirstname: Option<String>,
-    pub billinglastname: Option<String>,
+    pub billingfirstname: Option<Secret<String>>,
+    pub billinglastname: Option<Secret<String>>,
     pub billingcountryiso2a: Option<String>,
     pub billingemail: Option<Email>,
 
@@ -444,7 +444,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: request_types,
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // Card-specific fields
@@ -481,12 +481,10 @@ impl TrustpaymentsPaymentsRequest {
                 // Billing fields
                 billingfirstname: item
                     .router_data
-                    .get_optional_billing_first_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_first_name(),
                 billinglastname: item
                     .router_data
-                    .get_optional_billing_last_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_last_name(),
                 billingcountryiso2a: item
                     .router_data
                     .get_optional_billing_country()
@@ -511,7 +509,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: vec!["AUTH".to_string()],
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // EPS-specific fields
@@ -523,12 +521,10 @@ impl TrustpaymentsPaymentsRequest {
                 // Billing fields
                 billingfirstname: item
                     .router_data
-                    .get_optional_billing_first_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_first_name(),
                 billinglastname: item
                     .router_data
-                    .get_optional_billing_last_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_last_name(),
                 billingcountryiso2a: item
                     .router_data
                     .get_optional_billing_country()
@@ -558,7 +554,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: vec!["AUTH".to_string()],
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // Trustly-specific fields
@@ -570,12 +566,10 @@ impl TrustpaymentsPaymentsRequest {
                 // Billing fields
                 billingfirstname: item
                     .router_data
-                    .get_optional_billing_first_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_first_name(),
                 billinglastname: item
                     .router_data
-                    .get_optional_billing_last_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_last_name(),
                 billingcountryiso2a: item
                     .router_data
                     .get_optional_billing_country()
@@ -605,7 +599,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: vec!["AUTH".to_string()],
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // Alipay-specific fields
@@ -647,7 +641,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: vec!["AUTH".to_string()],
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // Paysera-specific fields
@@ -659,12 +653,10 @@ impl TrustpaymentsPaymentsRequest {
                 // Billing fields
                 billingfirstname: item
                     .router_data
-                    .get_optional_billing_first_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_first_name(),
                 billinglastname: item
                     .router_data
-                    .get_optional_billing_last_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_last_name(),
                 billingcountryiso2a: item
                     .router_data
                     .get_optional_billing_country()
@@ -694,7 +686,7 @@ impl TrustpaymentsPaymentsRequest {
                 requesttypedescriptions: vec!["AUTH".to_string()],
                 accounttypedescription: "ECOM".to_string(),
                 currencyiso3a: item.router_data.request.currency.to_string(),
-                baseamount: item.amount.to_string(),
+                baseamount: item.amount.clone(),
                 orderreference: item.router_data.connector_request_reference_id.clone(),
 
                 // SEPA-specific fields
@@ -706,12 +698,10 @@ impl TrustpaymentsPaymentsRequest {
                 // Billing fields
                 billingfirstname: item
                     .router_data
-                    .get_optional_billing_first_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_first_name(),
                 billinglastname: item
                     .router_data
-                    .get_optional_billing_last_name()
-                    .map(|name| name.expose()),
+                    .get_optional_billing_last_name(),
                 billingcountryiso2a: item
                     .router_data
                     .get_optional_billing_country()
