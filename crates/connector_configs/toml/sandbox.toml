@@ -7158,8 +7158,6 @@ type="Text"
 api_key = "API Key"
 
 [gigadat]
-[gigadat.connector_auth.HeaderKey]
-api_key = "API Key"
 [gigadat.connector_auth.SignatureKey]
 api_key = "Username"
 api_secret = "Password"
