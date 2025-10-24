@@ -383,6 +383,7 @@ impl ForeignFrom<api_enums::PaymentMethodType> for api_enums::PaymentMethod {
             | api_enums::PaymentMethodType::PromptPay
             | api_enums::PaymentMethodType::VietQr => Self::RealTimePayment,
             api_enums::PaymentMethodType::DirectCarrierBilling => Self::MobilePayment,
+            api_enums::PaymentMethodType::NetworkToken => Self::NetworkToken,
         }
     }
 }
@@ -415,6 +416,7 @@ impl ForeignTryFrom<payments::PaymentMethodData> for api_enums::PaymentMethod {
                     message: ("Mandate payments cannot have payment_method_data field".to_string()),
                 })
             }
+            payments::PaymentMethodData::NetworkToken(..) => Ok(Self::NetworkToken),
         }
     }
 }

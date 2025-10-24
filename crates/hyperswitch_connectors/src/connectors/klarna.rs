@@ -652,7 +652,8 @@ impl ConnectorIntegration<Authorize, PaymentsAuthorizeData, PaymentsResponseData
                         | common_enums::PaymentMethodType::OpenBankingPIS
                         | common_enums::PaymentMethodType::RevolutPay
                         | common_enums::PaymentMethodType::IndonesianBankTransfer
-                        | common_enums::PaymentMethodType::Breadpay,
+                        | common_enums::PaymentMethodType::Breadpay
+                        | common_enums::PaymentMethodType::NetworkToken,
                     ) => Err(error_stack::report!(errors::ConnectorError::NotSupported {
                         message: payment_method_type.to_string(),
                         connector: "klarna",
@@ -778,7 +779,8 @@ impl ConnectorIntegration<Authorize, PaymentsAuthorizeData, PaymentsResponseData
                         | common_enums::PaymentMethodType::Skrill
                         | common_enums::PaymentMethodType::IndonesianBankTransfer
                         | common_enums::PaymentMethodType::RevolutPay
-                        | common_enums::PaymentMethodType::Breadpay,
+                        | common_enums::PaymentMethodType::Breadpay
+                        | common_enums::PaymentMethodType::NetworkToken,
                     ) => Err(error_stack::report!(errors::ConnectorError::NotSupported {
                         message: payment_method_type.to_string(),
                         connector: "klarna",
@@ -910,7 +912,8 @@ impl ConnectorIntegration<Authorize, PaymentsAuthorizeData, PaymentsResponseData
                         | common_enums::PaymentMethodType::OpenBankingPIS
                         | common_enums::PaymentMethodType::IndonesianBankTransfer
                         | common_enums::PaymentMethodType::RevolutPay
-                        | common_enums::PaymentMethodType::Breadpay,
+                        | common_enums::PaymentMethodType::Breadpay
+                        | common_enums::PaymentMethodType::NetworkToken,
                     ) => Err(error_stack::report!(errors::ConnectorError::NotSupported {
                         message: payment_method_type.to_string(),
                         connector: "klarna",
