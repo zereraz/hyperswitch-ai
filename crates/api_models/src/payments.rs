@@ -2822,16 +2822,7 @@ pub struct VaultToken {
     pub card_holder_name: Option<Secret<String>>,
 }
 
-#[derive(
-    Default,
-    Eq,
-    PartialEq,
-    Clone,
-    Debug,
-    serde::Deserialize,
-    serde::Serialize,
-    ToSchema,
-)]
+#[derive(Default, Eq, PartialEq, Clone, Debug, serde::Deserialize, serde::Serialize, ToSchema)]
 pub struct NetworkTokenData {
     /// The network token
     #[schema(value_type = String, example = "4242424242424242")]
@@ -3342,7 +3333,7 @@ pub enum AdditionalPaymentData {
     NetworkToken {
         #[serde(flatten)]
         details: Option<NetworkTokenData>,
-    }
+    },
 }
 
 impl AdditionalPaymentData {
@@ -7195,19 +7186,19 @@ impl From<AdditionalPaymentData> for PaymentMethodDataResponse {
                 Self::MobilePayment(Box::new(MobilePaymentResponse { details }))
             }
             AdditionalPaymentData::NetworkToken { details } => {
-                Self::NetworkToken(Box::new(NetworkTokenResponse { 
-                    token_last_four: details
-                        .clone()
-                        .map(|dt| dt.network_token
-                        .peek()
-                        .clone()
-                        .chars()
-                        .rev()
-                        .take(4)
-                        .collect::<String>()
-                        .chars()
-                        .rev()
-                        .collect::<String>()),
+                Self::NetworkToken(Box::new(NetworkTokenResponse {
+                    token_last_four: details.clone().map(|dt| {
+                        dt.network_token
+                            .peek()
+                            .clone()
+                            .chars()
+                            .rev()
+                            .take(4)
+                            .collect::<String>()
+                            .chars()
+                            .rev()
+                            .collect::<String>()
+                    }),
                     token_exp_month: details.clone().map(|dt| dt.token_exp_month.clone()),
                     token_exp_year: details.clone().map(|dt| dt.token_exp_year.clone()),
                     token_cryptogram: details.clone().and_then(|dt| dt.token_cryptogram.clone()),

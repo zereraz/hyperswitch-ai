@@ -210,7 +210,9 @@ impl IntoDirValue for (global_enums::PaymentMethodType, global_enums::PaymentMet
             global_enums::PaymentMethodType::BhnCardNetwork => {
                 Ok(dirval!(GiftCardType = BhnCardNetwork))
             }
-            global_enums::PaymentMethodType::NetworkToken => Ok(dirval!(NetworkTokenType = NetworkToken)),
+            global_enums::PaymentMethodType::NetworkToken => {
+                Ok(dirval!(NetworkTokenType = NetworkToken))
+            }
         }
     }
 }
