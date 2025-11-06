@@ -349,11 +349,7 @@ async fn incoming_webhooks_core<W: types::OutgoingWebhookType>(
                 &webhook_processing_result.transform_data,
                 &final_request_details,
                 is_relay_webhook,
-                merchant_connector_account
-                    .ok_or(errors::ApiErrorResponse::MerchantConnectorAccountNotFound {
-                        id: connector_name_or_mca_id.to_string(),
-                    })?
-                    .merchant_connector_id,
+                merchant_connector_account.as_ref().map(|mca| mca.merchant_connector_id.clone()),
             )
             .await;
 
@@ -536,7 +532,7 @@ async fn process_webhook_business_logic(
     webhook_transform_data: &Option<Box<unified_connector_service::WebhookTransformData>>,
     request_details: &IncomingWebhookRequestDetails<'_>,
     is_relay_webhook: bool,
-    billing_connector_mca_id: common_utils::id_type::MerchantConnectorAccountId,
+    billing_connector_mca_id: Option<common_utils::id_type::MerchantConnectorAccountId>,
 ) -> errors::RouterResult<WebhookResponseTracker> {
     let object_ref_id = connector
         .get_webhook_object_reference_id(request_details)
@@ -2574,7 +2570,7 @@ async fn subscription_incoming_webhook_flow(
     connector_enum: &ConnectorEnum,
     request_details: &IncomingWebhookRequestDetails<'_>,
     event_type: webhooks::IncomingWebhookEvent,
-    billing_connector_mca_id: common_utils::id_type::MerchantConnectorAccountId,
+    billing_connector_mca_id: Option<common_utils::id_type::MerchantConnectorAccountId>,
 ) -> CustomResult<WebhookResponseTracker, errors::ApiErrorResponse> {
     // Only process invoice_generated events for MIT payments
     if event_type != webhooks::IncomingWebhookEvent::InvoiceGenerated {
@@ -2635,10 +2631,19 @@ async fn subscription_incoming_webhook_flow(
 
     logger::info!("Payment method ID found: {}", payment_method_id);
 
+    // Use billing_connector_mca_id if provided, otherwise fall back to subscription's merchant_connector_id
+    // This ensures backward compatibility with legacy webhook URLs that don't include mca_id
+    let mca_id = billing_connector_mca_id
+        .or(subscription_with_handler.subscription.merchant_connector_id.clone())
+        .ok_or(errors::ApiErrorResponse::GenericNotFoundError {
+            message: "No merchant connector account found for subscription".to_string(),
+        })
+        .attach_printable("Neither billing_connector_mca_id nor subscription.merchant_connector_id is available")?;
+
     let _invoice_new = invoice_handler
         .create_invoice_entry(
             &state,
-            billing_connector_mca_id.clone(),
+            mca_id,
             None,
             mit_payment_data.amount_due,
             mit_payment_data.currency_code,
